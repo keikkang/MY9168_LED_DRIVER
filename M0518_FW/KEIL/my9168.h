@@ -12,10 +12,12 @@
 typedef struct _MY9168_{
 	SPI_T* spi_ch;
 	uint16_t data; //get data from uart channel
+	uint32_t brightness;
 }MY9168_t;
 
 extern void my9168_init(SPI_T* f_spi_ch );
 extern void set_led_data(uint16_t f_data);
+extern void set_brigtness(uint32_t timer_val, MY9168_t* my9168_channel);
 
 
 #endif

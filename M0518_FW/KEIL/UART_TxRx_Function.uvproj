@@ -496,6 +496,11 @@
               <FileType>1</FileType>
               <FilePath>..\..\Library\StdDriver\src\uart.c</FilePath>
             </File>
+            <File>
+              <FileName>timer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>D:\NUVOTON\M0518BSP-master\Library\StdDriver\src\timer.c</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>

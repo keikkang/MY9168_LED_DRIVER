@@ -13,21 +13,23 @@ void my9168_init(SPI_T* f_spi_ch )
 
 		SPI_Open(f_spi_ch, SPI_MASTER, SPI_MODE_0, 16, 2000000);
 
-
-		GPIO_SetMode(PC, BIT0, GPIO_PMD_OUTPUT);
-		GPIO_SetMode(PC, BIT2, GPIO_PMD_OUTPUT);
-	  
-	  
-	  GPIO_SetMode(PA, BIT14, GPIO_PMD_OUTPUT); //for debug io led
+    if(f_spi_ch == SPI0)
+		{
+			NVIC_DisableIRQ(SPI0_IRQn);
+			
+		  GPIO_SetMode(PC, BIT0, GPIO_PMD_OUTPUT);
+		  GPIO_SetMode(PC, BIT2, GPIO_PMD_OUTPUT);
+	    GPIO_SetMode(PA, BIT14, GPIO_PMD_OUTPUT); //for debug io led
 	
-	  CHIP_ENABLE = 1; //ENABLE
-	  LATCH = 0; //LATCH
-
+	    CHIP_ENABLE = 1; //ENABLE
+	    LATCH = 0; //LATCH
+    }
+		
 	  SPI_EnableFIFO(f_spi_ch, 1, 1);
 
     /* Disable TX FIFO threshold interrupt and RX FIFO time-out interrupt */
     SPI_DisableInt(f_spi_ch, SPI_FIFO_TX_INT_MASK | SPI_FIFO_TIMEOUT_INT_MASK);
-    NVIC_DisableIRQ(SPI0_IRQn);
+
 }
 
 void set_led_data(uint16_t f_data)
@@ -52,7 +54,17 @@ void set_led_data(uint16_t f_data)
 			LATCH = 0;
 		
 			CHIP_ENABLE = 0;
-	
 }
+
+void set_brigtness(uint32_t timer_val, MY9168_t* my9168_channel)
+{
+	if(timer_val%10 <= my9168_channel->brightness){
+		CHIP_ENABLE = 0;
+	}
+	else{
+		CHIP_ENABLE = 1;
+	}
+}
+
 
 

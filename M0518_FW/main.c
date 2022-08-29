@@ -25,14 +25,16 @@ uint8_t test_string0[] = "THIS_IS_UART0\n";
 uint8_t test_string1[] = "THIS_IS_UART1\n";
 uint8_t test_string2[] = "THIS_IS_UART2\n";
 
-volatile queue_t uart0_q;
 
+volatile queue_t uart0_q;
 volatile queue_t uart1_q;
 volatile queue_t uart2_q;
 
 volatile uart_t  uart0_d = {0};
 volatile uart_t  uart1_d = {0};
 volatile uart_t  uart2_d = {0};
+
+volatile uint32_t timer_counter = 0;
 
 void UART02_IRQHandler(void);
 void UART1_IRQHandler(void);
@@ -56,7 +58,7 @@ void SYS_Init(void)
 	  /* Select HXT as the clock source of HCLK. HCLK source divide 1 */
     CLK_SetHCLK(CLK_CLKSEL0_HCLK_S_HXT, CLK_CLKDIV_HCLK(1));
 	
-	  CLK_SetModuleClock(SPI0_MODULE, CLK_CLKSEL1_SPI0_S_HCLK, MODULE_NoMsk);
+    CLK_SetModuleClock(SPI0_MODULE, CLK_CLKSEL1_SPI0_S_HCLK, MODULE_NoMsk);
 
     /* Set core clock as PLL_CLOCK from PLL */
     //CLK_SetCoreClock(PLL_CLOCK);
@@ -66,14 +68,16 @@ void SYS_Init(void)
     CLK_EnableModuleClock(UART0_MODULE);
 		CLK_EnableModuleClock(UART1_MODULE);
 		CLK_EnableModuleClock(UART2_MODULE);
+		CLK_EnableModuleClock(TMR0_MODULE);
 
     /* Select UART module clock source */
 	
     CLK_SetModuleClock(UART0_MODULE, CLK_CLKSEL1_UART_S_HXT, CLK_CLKDIV_UART(1));
-		CLK_SetModuleClock(UART1_MODULE, CLK_CLKSEL1_UART_S_HXT, CLK_CLKDIV_UART(1));
-		CLK_SetModuleClock(UART2_MODULE, CLK_CLKSEL1_UART_S_HXT, CLK_CLKDIV_UART(1));
+    CLK_SetModuleClock(UART1_MODULE, CLK_CLKSEL1_UART_S_HXT, CLK_CLKDIV_UART(1));
+    CLK_SetModuleClock(UART2_MODULE, CLK_CLKSEL1_UART_S_HXT, CLK_CLKDIV_UART(1));
+		CLK_SetModuleClock(TMR0_MODULE, CLK_CLKSEL1_TMR0_S_HXT, 0);
 		
-		SystemCoreClockUpdate();
+    SystemCoreClockUpdate();
 
     /*---------------------------------------------------------------------------------------------------------*/
     /* Init I/O Multi-function                                                                                 */
@@ -100,25 +104,32 @@ void UART_Init(uint8_t channel)
     /*---------------------------------------------------------------------------------------------------------*/
     switch(channel)
 		{
-			case 0: 
-				 SYS_ResetModule(UART0_RST);
-				 UART_Open(UART0, 115200);
+      case 0: 
+			  SYS_ResetModule(UART0_RST);
+			  UART_Open(UART0, 115200);
 			break;
 			
 			case 1:
-				 SYS_ResetModule(UART1_RST);
-				 UART_Open(UART1, 115200);
+			  SYS_ResetModule(UART1_RST);
+			  UART_Open(UART1, 115200);
 			break;
 			
 			case 2:
-				 SYS_ResetModule(UART2_RST);
-				 UART_Open(UART2, 115200);
+			  SYS_ResetModule(UART2_RST);
+			  UART_Open(UART2, 115200);
 			break;
 			
 			default:
-				break;
+		  break;
 		}		
 
+}
+
+void Timer0_Init(void)
+{
+	TIMER_Open(TIMER0, TIMER_PERIODIC_MODE, 100); //Timer 0 IRQ Called every 10ms 
+	TIMER_EnableInt(TIMER0);
+	NVIC_EnableIRQ(TMR0_IRQn);
 }
 
 /*---------------------------------------------------------------------------------------------------------*/
@@ -133,11 +144,12 @@ void UART_Init(uint8_t channel)
 
 int main(void)
 {
-		uint32_t i;
+	  uint32_t timer_buf;
 	
 		MY9168_t my9168_1;
 	
 	  my9168_1.data = 0;
+	  my9168_1.brightness = 10; // This parameter is must betwenn 0~10
 
     /* Unlock protected registers */
     SYS_UnlockReg();
@@ -149,8 +161,10 @@ int main(void)
     SYS_LockReg();
 	
 	  /*call back funtion init*/
-    UART_Init(0); //UART0 INIT
-	  UART_Init(1); //UART1 INIT
+    UART_Init(0); //UART0 Init
+	  UART_Init(1); //UART1 Init
+	  Timer0_Init(); //Timer 0 Init
+	  my9168_init(SPI0); //SPI0 init for MY9168 DRIVER
  
     init_q(&uart0_q); //UART0 CIRCLEQ INIT
 	  init_q(&uart1_q); //UART1 CIRCLEQ INIT
@@ -164,6 +178,7 @@ int main(void)
 	  UART_EnableInt(UART0, (UART_IER_RDA_IEN_Msk));
 		UART_EnableInt(UART1, (UART_IER_RDA_IEN_Msk));
 		
+		TIMER_Start(TIMER0);
 		
 		#ifdef UART_CH_DEBUG_MODE
 		UART_Init(2); //UART2 INIT
@@ -181,7 +196,8 @@ int main(void)
 			/*check uart_q buf*/
 			check_uart_buffer(&uart0_q, &uart0_d, "UART0", &my9168_1);
 			
-			if(my9168_1.data){
+			if(my9168_1.data)
+      {
 				set_led_data(my9168_1.data);
 				my9168_1.data = 0;
 			}
@@ -189,13 +205,13 @@ int main(void)
 			check_uart_buffer(&uart1_q, &uart1_d, "UART1");
 			check_uart_buffer(&uart2_q, &uart2_d, "UART2");
 			*/
+			set_brigtness(timer_counter, &my9168_1);
 			
-			DEBUG_LED ^= 1;
-		
-			for(i=0;i<1000000;i++) //DEFAULT 100000
+			if(timer_buf != timer_counter)
 			{
-   			__NOP();
-			}	
+				timer_buf = timer_counter;
+				printf("timer_counter val : %d\n", timer_counter);
+			}
 
 		}
 
@@ -225,6 +241,20 @@ void UART1_IRQHandler(void)
 	}
 }
 
+void TMR0_IRQHandler(void)
+{
+    if(TIMER_GetIntFlag(TIMER0) == 1)
+    {
+        /* Clear Timer0 time-out interrupt flag */
+        TIMER_ClearIntFlag(TIMER0);
+        timer_counter++;
+			  if(timer_counter == 100)
+				{
+					timer_counter = 0;
+				}
+    }
+}
+
 void check_uart_buffer(volatile queue_t* q_channel, volatile uart_t* uart_data_channel, uint8_t* handler, MY9168_t* my9168_channel)
 {
 	static uint8_t num = 0;
@@ -238,14 +268,15 @@ void check_uart_buffer(volatile queue_t* q_channel, volatile uart_t* uart_data_c
 
 		if(num>1)
 		{
-				while(!(num==1)){
-					uart_data_channel->rx_data[num--] = 0; //trim dummy data;
-				}
+      while(!(num==1)){
+		    uart_data_channel->rx_data[num--] = 0; //trim dummy data;
+      }
 			
-			data_buf = (uint16_t)( (uart_data_channel->rx_data[1]<<8) | uart_data_channel->rx_data[0] );
-			my9168_channel->data = data_buf;
-			printf("led_data : %x \n", data_buf );
-			num=0;
+		
+      data_buf = (uint16_t)( (uart_data_channel->rx_data[1]<<8) | uart_data_channel->rx_data[0] );
+      my9168_channel->data = data_buf;
+      printf("led_data : %x \n", data_buf );
+      num=0;
 		}
 		
 		#ifdef UART_CH_DEBUG_MODE
