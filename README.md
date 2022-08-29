@@ -1,6 +1,32 @@
-# MY9168_LED_DRIVER (Using Nuvoton Cortex M0 M0518) ver0.0.0  
-This sample code accept uart data 2byte using interrupt & circle queue  
-2byte data transfer to MY9168 ic data command and SPI peri drving MY9168 IC 
+# MY9168_LED_DRIVER
 
-![image](https://user-images.githubusercontent.com/108905975/182565653-dd98dc7a-6109-40d4-94e8-01ccd929f843.png)
+## Index
+  - [Branch](#branch)
+  - [System Preview](#system-preview)
+  - [Description](#description)
+  - [Enviorment](#enviorment) 
+  - [Reference](#reference)
 
+## Branch
+Update Brigtness control using timer0
+  
+## System Preview
+Image to be update
+
+## Description
+<!--Wirte one paragraph of project description -->  
+- This project for MY9168 LED Driver 
+- 2byte data transfer to MY9168 ic using uart0 and SPI peri drving MY9168 IC 
+
+## Debugging Image
+![image](https://user-images.githubusercontent.com/108905975/187124926-2d8073d6-fed6-490e-9243-cefc753c93f0.png)
+
+## Enviorment
+<!-- Write enviromnet about this project -->
+- Hardware : M0518 / Sample Board
+- Middleware : None
+- IDE : ARM Keil uvision 5.36.0.0
+
+## Reference
+<!-- Write the way to contribute -->
+ - (https://github.com/OpenNuvoton/M480BSP) - BSP
